@@ -7,6 +7,7 @@
 #include "Math/Vector2D.h"
 #include "Math/Vector.h"
 #include "Containers/Array.h"
+#include "Algo/Sort.h"
 
 #include "RoadNetwork/PLATEAURnDef.h"
 #include "RoadNetwork/Util/PLATEAUVector2DEx.h"
@@ -330,7 +331,8 @@ FGeoGraph2D::FComputeOutlineResult<T> FGeoGraph2D::ComputeOutline(
     {
         return FAxisPlaneEx::GetTangent(ToVec3(A), Plane);
     };
-    Keys.Sort([&](const T& A, const T& B) {
+    // TArray::Sort unwraps TObjectPtr in UE5.8, so compare T elements via Algo::Sort.
+    Algo::Sort(Keys, [&](const T& A, const T& B) {
         const FVector2D A2 = ToVec2(A);
         const FVector2D B2 = ToVec2(B);
         if (A2.X < B2.X)

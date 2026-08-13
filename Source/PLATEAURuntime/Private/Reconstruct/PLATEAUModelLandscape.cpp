@@ -96,7 +96,9 @@ ALandscape* FPLATEAUModelLandscape::CreateLandScape(UWorld* World, const int32 N
 #if WITH_EDITOR
     FActorSpawnParameters Param;
     ALandscape* Landscape = World->SpawnActor<ALandscape>(Param);
+#if UE_VERSION_OLDER_THAN(5, 7, 0)
     Landscape->bCanHaveLayersContent = false;
+#endif
     Landscape->SetActorTransform(LandscapeTransform);
 #if UE_VERSION_NEWER_THAN(5, 5, 0)
     const TArrayView<const struct FLandscapeLayer> ImportLayers;

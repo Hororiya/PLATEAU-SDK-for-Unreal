@@ -162,13 +162,25 @@ namespace {
      * @return ULineBatchComponent
      */
     ULineBatchComponent* GetDebugLineBatch(const UWorld* InWorld, const bool bPersistentLines, const float LifeTime, const bool bDepthIsForeground) {
-        return InWorld
-                   ? (bDepthIsForeground
-                          ? InWorld->ForegroundLineBatcher
-                          : bPersistentLines || LifeTime > 0.f
-                          ? InWorld->PersistentLineBatcher
-                          : InWorld->LineBatcher)
-                   : nullptr;
+        if (!InWorld)
+        {
+            return nullptr;
+        }
+        const bool bPersistent = bPersistentLines || LifeTime > 0.f;
+        UWorld::ELineBatcherType Type;
+        if (bDepthIsForeground)
+        {
+            Type = bPersistent
+                ? UWorld::ELineBatcherType::ForegroundPersistent
+                : UWorld::ELineBatcherType::Foreground;
+        }
+        else
+        {
+            Type = bPersistent
+                ? UWorld::ELineBatcherType::WorldPersistent
+                : UWorld::ELineBatcherType::World;
+        }
+        return InWorld->GetLineBatcher(Type);
     }
 
     /**

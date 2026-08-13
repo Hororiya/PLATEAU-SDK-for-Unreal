@@ -14,37 +14,37 @@
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
 	"Installed": false,
-	"EngineVersion": [ "5.5.4" ],
+	"EngineVersion": "5.8.0",
 	"Modules": [
 		{
 			"Name": "PLATEAURuntime",
 			"Type": "Runtime",
 			"LoadingPhase": "PreDefault",
-			"WhitelistPlatforms": [ "Win64", "Mac" ]
+			"PlatformAllowList": [ "Win64", "Mac" ]
 		},
 		{
 			"Name": "PLATEAUEditor",
 			"Type": "Editor",
 			"LoadingPhase": "PreDefault",
-			"WhitelistPlatforms": [ "Win64", "Mac" ]
+			"PlatformAllowList": [ "Win64", "Mac" ]
 		},
 		{
 			"Name": "PLATEAUEditorBPLibraries",
 			"Type": "Editor",
 			"LoadingPhase": "PreDefault",
-			"WhitelistPlatforms": [ "Win64", "Mac" ]
+			"PlatformAllowList": [ "Win64", "Mac" ]
 		},
 		{
 			"Name": "PLATEAURuntimeBPLibraries",
 			"Type": "Runtime",
 			"LoadingPhase": "PreDefault",
-			"WhitelistPlatforms": [ "Win64", "Mac" ]
+			"PlatformAllowList": [ "Win64", "Mac" ]
 		},
 		{
 			"Name": "PLATEAUTests",
 			"Type": "Editor",
 			"LoadingPhase": "PreDefault",
-			"WhitelistPlatforms": [ "Win64", "Mac" ]
+			"PlatformAllowList": [ "Win64", "Mac" ]
 		}
 	]
 }

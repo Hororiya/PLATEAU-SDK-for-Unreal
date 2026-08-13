@@ -46,7 +46,6 @@ public class PLATEAURuntime : ModuleRules
                 "RHI",
                 "ImageWrapper",
                 "RenderCore",
-                "OpenGL",
                 "Projects",
                 "Json",
                 "JsonUtilities"

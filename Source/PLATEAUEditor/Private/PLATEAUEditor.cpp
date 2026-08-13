@@ -1,4 +1,5 @@
 // Copyright © 2023 Ministry of Land, Infrastructure and Transport
+// Copyright 2026 6F978E
 
 #include "PLATEAUEditor.h"
 #include "PLATEAUCityModelLoader.h"
@@ -10,6 +11,7 @@
 #include "PLATEAUWindow.h"
 #include "CityModelLoaderDetails/PLATEAUCityModelLoaderDetails.h"
 #include "ExtentEditor/PLATEAUExtentEditor.h"
+#include "Import/PLATEAUInterchangeMeshImporter.h"
 #include "Settings/EditorLoadingSavingSettings.h"
 
 
@@ -65,6 +67,8 @@ public:
 
         Window->Startup();
 
+        FPLATEAUInterchangeMeshImporter::Register();
+
         FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
         PropertyModule.RegisterCustomClassLayout(
             APLATEAUCityModelLoader::StaticClass()->GetFName(),
@@ -83,6 +87,7 @@ public:
     }
 
     virtual void ShutdownModule() override {
+        FPLATEAUInterchangeMeshImporter::Unregister();
         Window->Shutdown();
 
         FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");

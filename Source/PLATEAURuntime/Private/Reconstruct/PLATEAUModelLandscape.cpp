@@ -1,4 +1,5 @@
 // Copyright 2023 Ministry of Land, Infrastructure and Transport
+// Copyright 2026 6F978E
 
 #include <Reconstruct/PLATEAUModelLandscape.h>
 #include "Reconstruct/PLATEAUMeshLoaderForHeightmap.h"

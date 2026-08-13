@@ -1,4 +1,5 @@
 // Copyright © 2023 Ministry of Land, Infrastructure and Transport
+// Copyright 2026 6F978E
 
 #include "PLATEAUMeshLoader.h"
 #include "PLATEAUTextureLoader.h"
@@ -306,7 +307,7 @@ void FPLATEAUMeshLoader::LoadModel(AActor* ModelActor, USceneComponent* ParentCo
     const std::shared_ptr<plateau::polygonMesh::Model> Model,
     const FLoadInputData& LoadInputData,
     const std::shared_ptr<const citygml::CityModel> CityModel, TAtomic<bool>* bCanceled) {
-    UE_LOG(LogTemp, Log, TEXT("LoadModel: %s %d"), *FString(Model->debugString().c_str()), Model->getAllMeshes().size());
+    UE_LOG(LogTemp, Log, TEXT("LoadModel meshes=%d roots=%d"), Model->getAllMeshes().size(), Model->getRootNodeCount());
 
     UE_LOG(LogTemp, Log, TEXT("Model->getRootNodeCount(): %d"), Model->getRootNodeCount());
     LastCreatedComponents.Empty();

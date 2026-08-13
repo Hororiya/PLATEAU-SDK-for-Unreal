@@ -1,4 +1,5 @@
 // Copyright © 2023 Ministry of Land, Infrastructure and Transport
+// Copyright 2026 6F978E
 
 
 #include "PLATEAUCityModelLoader.h"
@@ -10,9 +11,15 @@
 #include "plateau/polygon_mesh/mesh_extractor.h"
 #include "plateau/polygon_mesh/mesh_extract_options.h"
 #include "plateau/dataset/grid_code.h"
+#include "plateau/mesh_writer/gltf_writer.h"
 #include "PLATEAUMeshLoader.h"
 #include "citygml/citygml.h"
 #include "Component/PLATEAUSceneComponent.h"
+#include "Import/PLATEAUImportMaterialLedger.h"
+#include "Import/PLATEAUInterchangeImportBridge.h"
+#include "Async/Future.h"
+#include "HAL/FileManager.h"
+#include "Misc/Paths.h"
 
 
 #define LOCTEXT_NAMESPACE "PLATEAUCityModelLoader"
@@ -276,6 +283,8 @@ void APLATEAUCityModelLoader::LoadAsync(const bool bAutomationTest) {
 
                 TArray<TFuture<bool>> Futures;
                 TArray<FString> GmlNames;
+                TSharedRef<FPLATEAUImportMaterialLedger, ESPMode::ThreadSafe> MaterialLedger =
+                    MakeShared<FPLATEAUImportMaterialLedger, ESPMode::ThreadSafe>();
 
                 bool bHasDatasetNameSet = false;
                 FCriticalSection SetDatasetNameSection;
@@ -375,7 +384,7 @@ void APLATEAUCityModelLoader::LoadAsync(const bool bAutomationTest) {
                     GmlNames.Add(GmlName);
                     Futures.Add(Async(EAsyncExecution::Thread,
                         [InputData, &LoadInputDataArray, Source, ModelActor, GmlName, OwnerLoader,
-                        CopiedGmlPath, &LoadMeshSection, bAutomationTest, &bCanceledRef, Index, ImportGmlProgressDelegate, ImportFailedGmlFileDelegate] {
+                        CopiedGmlPath, &LoadMeshSection, bAutomationTest, &bCanceledRef, Index, ImportGmlProgressDelegate, ImportFailedGmlFileDelegate, MaterialLedger] {
 
                             if (bCanceledRef->Load(EMemoryOrder::Relaxed))
                                 return false;
@@ -406,7 +415,14 @@ void APLATEAUCityModelLoader::LoadAsync(const bool bAutomationTest) {
                                 }, TStatId(), nullptr, ENamedThreads::GameThread);
 
                             // 注: 名前空間plateau::polygonMeshをusingで省略しないこと。Packageビルドで問題となる。
-                            const auto Model = plateau::polygonMesh::MeshExtractor::extractInExtents(*CityModel, InputData.ExtractOptions, InputData.Extents);
+                            auto ExtractOptions = InputData.ExtractOptions;
+                            if (ShouldUsePLATEAUInterchangeImport())
+                            {
+                                ExtractOptions.mesh_granularity = plateau::polygonMesh::MeshGranularity::PerCityModelArea;
+                                ExtractOptions.enable_texture_packing = false;
+                                ExtractOptions.unit_scale = 1.0f;
+                            }
+                            const auto Model = plateau::polygonMesh::MeshExtractor::extractInExtents(*CityModel, ExtractOptions, InputData.Extents);
 
                             // 各GMLについて親Componentを作成
                             // コンポーネントは拡張子無しgml名に設定
@@ -426,6 +442,52 @@ void APLATEAUCityModelLoader::LoadAsync(const bool bAutomationTest) {
                                     ImportGmlProgressDelegate.Broadcast(Index, 0.75, LOCTEXT("LoadModel", "ワールドに読み込み中..."));
                                 }, TStatId(), nullptr, ENamedThreads::GameThread);
 
+                            bool bImported = false;
+                            if (ShouldUsePLATEAUInterchangeImport() && Model && Model->getAllMeshes().size() > 0)
+                            {
+                                const FString StageDir = FPaths::Combine(FPaths::ProjectIntermediateDir(), TEXT("PLATEAU/Gltf"));
+                                IFileManager::Get().MakeDirectory(*StageDir, true);
+                                const FString GlbPath = FPaths::ConvertRelativePathToFull(
+                                    FPaths::Combine(StageDir, GmlRootComponentName + TEXT(".glb")));
+
+                                plateau::meshWriter::GltfWriter Writer;
+                                plateau::meshWriter::GltfWriteOptions GltfOptions;
+                                GltfOptions.mesh_file_format = plateau::meshWriter::GltfFileFormat::GLB;
+                                bool bWrote = false;
+                                try
+                                {
+                                    bWrote = Writer.write(TCHAR_TO_UTF8(*GlbPath), *Model, GltfOptions);
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    UE_LOG(LogTemp, Error, TEXT("PLATEAU glTF stage failed: %s"), UTF8_TO_TCHAR(e.what()));
+                                }
+
+                                if (bWrote)
+                                {
+                                    TArray<FPLATEAUMaterialKey> MaterialKeys;
+                                    FPLATEAUImportMaterialLedger::CollectKeysFromModel(*Model, MaterialKeys);
+
+                                    TSharedRef<TPromise<bool>, ESPMode::ThreadSafe> ImportPromise =
+                                        MakeShared<TPromise<bool>, ESPMode::ThreadSafe>();
+                                    FPLATEAUInterchangeGmlJob Job;
+                                    Job.ModelActor = ModelActor;
+                                    Job.GmlRoot = GmlRootComponent;
+                                    Job.GmlBaseName = GmlRootComponentName;
+                                    Job.DatasetName = TEXT("CityGML");
+                                    Job.GlbPath = GlbPath;
+                                    Job.MaterialKeys = MoveTemp(MaterialKeys);
+                                    Job.Ledger = MaterialLedger;
+                                    Job.OnComplete = [ImportPromise](bool bSuccess)
+                                    {
+                                        ImportPromise->SetValue(bSuccess);
+                                    };
+                                    GetPLATEAUInterchangeGmlImporter().Execute(MoveTemp(Job));
+                                    bImported = ImportPromise->GetFuture().Get();
+                                }
+                            }
+
+                            if (!bImported)
                             {
                                 FScopeLock Lock(LoadMeshSection);
                                 FPLATEAUMeshLoader(bAutomationTest).LoadModel(ModelActor, GmlRootComponent, Model, InputData, CityModel, bCanceledRef);
@@ -466,6 +528,15 @@ void APLATEAUCityModelLoader::LoadAsync(const bool bAutomationTest) {
 
                         return CurrentLoadingGmls.Num() == 0;
                     }, 3);
+
+                if (MaterialLedger->NumPendingMeshes() > 0)
+                {
+                    FFunctionGraphTask::CreateAndDispatchWhenReady(
+                        [MaterialLedger]()
+                        {
+                            MaterialLedger->CreateAndApply();
+                        }, TStatId(), nullptr, ENamedThreads::GameThread)->Wait();
+                }
 
                 *Phase = ECityModelLoadingPhase::Finished;
                 FFunctionGraphTask::CreateAndDispatchWhenReady(

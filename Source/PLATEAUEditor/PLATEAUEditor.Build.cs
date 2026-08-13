@@ -1,4 +1,5 @@
 // Copyright © 2023 Ministry of Land, Infrastructure and Transport
+// Copyright 2026 6F978E
 
 using UnrealBuildTool;
 using System;
@@ -61,6 +62,10 @@ public class PLATEAUEditor : ModuleRules
                 "UMG",
                 "UMGEditor",
                 "WorkspaceMenuStructure",
+                "InterchangeCore",
+                "InterchangeEngine",
+                "InterchangePipelines",
+                "InterchangeNodes",
                 // ... add private dependencies that you statically link with here ...	
             }
             );
